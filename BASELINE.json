@@ -1,0 +1,24 @@
+{
+  "source_commit": "447a3a26b13141844bd1c529abd6f69d68db33a8",
+  "source_tree": "77416f235ef2c52b14629473bd0d12de537fee88",
+  "official_result_date_beijing": "2026-10-11",
+  "official_result": {
+    "correct": 88,
+    "incorrect": 12,
+    "invalid": 0
+  },
+  "scope": "Runtime files exported byte-for-byte; independent history and documentation.",
+  "files": {
+    "implementations/__init__.py": "615bc4695036e6fec4dd4144387fae6e271f47f37e66c43b0f9fa15da5937afc",
+    "implementations/candidates/__init__.py": "91018e5d7fea6393da1e1a24b20661770f83a60b17ff8f093d5a68d66cccfc34",
+    "implementations/candidates/sl_v3_cont/__init__.py": "26c2be167360740873a03d9fbf9694b7378fcfc44c68ea01a62ad0c8e51d296a",
+    "implementations/candidates/sl_v3_cont/postprocess.py": "f95ffabe3a3f332eb37fee9c56664d42576f619732225fb746c9b50c20ae1686",
+    "implementations/candidates/sl_v3_cont/user_agent.py": "6a2f9f125f38af05580c4bddfafb920ca326725cbe4050f25893d00e7141aa81",
+    "implementations/candidates/sl_v3_cont/verifier.py": "4b96a0f50e6af65d6dcd3946ba36efca0fe5280d3c592183304c6bbfe250b611",
+    "implementations/postprocess/__init__.py": "461bc06c503983159d02b18da6ea3afad2cf60bf3708c64d2c07f2edc42444fe",
+    "implementations/postprocess/normalizer.py": "9528dcf7e3725e65153d4e250c4680306470be7995c4c0124b7dbbad3cce056f",
+    "requirements.txt": "30dde02b4ba692826a56f7f365630b8451fb3c2c4f830924a7fabfd8c1dfc5c7",
+    "user_agent.py": "953d00017b5226cbaffbe277a1a41c5d2cb227ef90d0406dc1c55b33d5f6aa18",
+    "implementations/candidates/sl_v3_cont/path_prompts.py": "5e86fdaba3307e7a951753e72d8a4d880ac7fe404abd93c6176948a3266614d1"
+  }
+}

@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.env
+.env.*
+artifacts/
+datasets/
+runs/
+outputs/
+logs/
+tmp/
+.scratch/
+.worktrees/

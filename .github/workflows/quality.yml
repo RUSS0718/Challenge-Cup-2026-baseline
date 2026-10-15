@@ -1,0 +1,32 @@
+name: MathAgent quality
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked development environment
+        run: uv sync --locked --all-groups
+      - name: Run pre-commit
+        run: uv run pre-commit run --all-files
+      - name: Run tests
+        run: uv run pytest -q
+      - name: Verify workspace contract
+        run: uv run python scripts/check_workspace.py --offline

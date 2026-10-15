@@ -108,3 +108,12 @@ python -m unittest discover -s tests -v
 
 测试检查运行文件哈希，以及真实入口下的第二路提示隔离、共享调用预算、续写、异常回退和状态重置。
 它们确认导出结构与脚本行为，不产生新的数学能力或官方成绩结论。
+
+## 产品设计文档
+
+- [主观评测 Agent Workbench PRD](docs/prd/subjective-agent-platform-prd.md)
+- [技术架构与开源项目机制映射](docs/architecture/subjective-agent-platform-technical-design.md)
+- [开源 Agent 项目调研](docs/research/open_source_agent_landscape.md)
+- [Codespace 初始化调研](docs/research/codespace-bootstrap-landscape.md)
+- [成熟工程初始化蓝图](docs/engineering-bootstrap-plan.md)
+- [黑客松冠军仓库调研](docs/research/hackathon-winning-repo-landscape.md)

@@ -1,15 +1,45 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+.secrets/
+
+# Python runtime and tooling caches
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 .pytest_cache/
-.env
-.env.*
-artifacts/
-datasets/
-runs/
-outputs/
-logs/
-tmp/
-.scratch/
-.worktrees/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.coverage
+coverage.xml
+htmlcov/
+
+# Frontend dependencies and build output
+node_modules/
+dist/
+build/
+.vite/
+.next/
+coverage/
+
+# Local application state and generated run output
+/.local/
+/.scratch/
+/artifacts/
+/runs/
+/logs/
+/tmp/
+/outputs/
+/sample_outputs/
+
+# Keep shareable VS Code extension recommendations; ignore personal workspace files.
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db

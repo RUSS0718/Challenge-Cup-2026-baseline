@@ -1,0 +1,6 @@
+# Compatibility install path. The authoritative dependency source is
+# pyproject.toml + uv.lock; CI and bootstrap use `uv sync --locked`.
+-r requirements.txt
+requests>=2.31.0
+langgraph==1.2.15
+deepagents==0.7.25

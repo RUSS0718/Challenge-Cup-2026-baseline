@@ -1,0 +1,46 @@
+[project]
+name = "mathagent"
+version = "0.1.0"
+description = "Challenge Cup 2026 MathAgent official baseline and product-side development workspace"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "mpmath==1.3.0",
+  "sympy==1.13.3",
+]
+
+[project.optional-dependencies]
+showcase = [
+  "langgraph==1.2.15",
+  "deepagents==0.7.25",
+]
+
+[dependency-groups]
+dev = [
+  "pre-commit>=3.7,<5",
+  "pytest>=8,<9",
+  "requests>=2.31,<3",
+  "ruff>=0.11,<1",
+  "langgraph==1.2.15",
+  "deepagents==0.7.25",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+  "artifacts",
+  ".venv",
+  "build",
+  "dist",
+  "user_agent.py",
+  "implementations",
+  "tests/test_baseline_snapshot.py",
+  "tests/test_boundary_check_path.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]

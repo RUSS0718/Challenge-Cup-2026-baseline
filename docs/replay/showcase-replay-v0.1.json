@@ -1,0 +1,85 @@
+{
+  "artifacts": [],
+  "exported_at": "2026-10-16T00:00:00+00:00",
+  "feature_status": {
+    "execution": "implemented",
+    "live_model": "unavailable",
+    "multimodal": "planned",
+    "python_math": "experimental",
+    "recovery": "implemented",
+    "replay": "implemented",
+    "verification": "implemented"
+  },
+  "run": {
+    "asset_refs": [],
+    "error": null,
+    "final_response": "回放结果：2",
+    "input_ref": {
+      "kind": "text",
+      "length": 24,
+      "sha256": "replay-only"
+    },
+    "profile": "showcase_mvp",
+    "run_id": "run_replay_v01",
+    "stage": "completed",
+    "status": "COMPLETED"
+  },
+  "run_mode": "replay",
+  "timeline": [
+    {
+      "evidence_id": "event_1",
+      "error_category": null,
+      "sequence": 1,
+      "stage": "planning",
+      "status": "RECEIVED",
+      "summary": "",
+      "type": "run_received"
+    },
+    {
+      "evidence_id": "event_2",
+      "error_category": "python_timeout",
+      "sequence": 2,
+      "stage": "running",
+      "status": "timeout",
+      "summary": "实验工具超时",
+      "type": "tool_completed"
+    },
+    {
+      "evidence_id": "event_3",
+      "error_category": null,
+      "sequence": 3,
+      "stage": "solving",
+      "status": "RESUMED",
+      "summary": "保留原失败事件后恢复",
+      "type": "resume_requested"
+    },
+    {
+      "evidence_id": "event_4",
+      "error_category": null,
+      "sequence": 4,
+      "stage": "completed",
+      "status": "COMPLETED",
+      "summary": "回放完成",
+      "type": "run_completed"
+    }
+  ],
+  "tools": [
+    {
+      "duration_seconds": null,
+      "evidence_id": "python_math",
+      "error_category": "python_timeout",
+      "name": "python_math",
+      "parameter_summary": "{\"code\":{\"length\":12,\"type\":\"str\"}}",
+      "result_summary": "python_timeout",
+      "status": "timeout"
+    }
+  ],
+  "verification": {
+    "checker": "lightweight_v0",
+    "findings": [
+      "replay_evidence"
+    ],
+    "status": "unknown"
+  },
+  "version": "evidence-v0.1"
+}

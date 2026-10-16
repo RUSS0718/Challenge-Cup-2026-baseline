@@ -5,6 +5,15 @@ Importing the official profile therefore never loads this package or its
 future product-only dependencies.
 """
 
+from .adapters import (
+    AdapterError,
+    DeepAgentsAdapter,
+    InternAgentAdapter,
+    InternChatModel,
+    InternModelAdapter,
+    ModelResponse,
+    ToolRequest,
+)
 from .graph import (
     AgentDecision,
     GraphDependencyError,
@@ -28,9 +37,14 @@ from .tools import PythonMathTool, ToolRegistry, ToolSpec
 __all__ = [
     "AgentAdapter",
     "AgentDecision",
+    "AdapterError",
     "AgentResult",
     "FakeAgentAdapter",
     "GraphDependencyError",
+    "DeepAgentsAdapter",
+    "InternAgentAdapter",
+    "InternChatModel",
+    "InternModelAdapter",
     "LangGraphExecutionLoop",
     "LoopBudget",
     "OFFICIAL_PROFILE",
@@ -43,6 +57,8 @@ __all__ = [
     "SHOWCASE_PROFILE",
     "SQLiteStore",
     "ToolExecutionResult",
+    "ToolRequest",
+    "ModelResponse",
     "ToolRegistry",
     "ToolSpec",
     "PythonMathTool",

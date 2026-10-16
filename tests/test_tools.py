@@ -29,6 +29,7 @@ class ToolRegistryTest(unittest.TestCase):
         result = registry.invoke("echo", {"secret": "omit-me", "value": 3})
         self.assertNotIn("omit-me", result.parameter_summary)
         self.assertIn("[redacted]", result.parameter_summary)
+        self.assertNotIn('"value": 3', result.parameter_summary)
 
     def test_profile_permission_and_timeout_are_structured(self):
         registry = ToolRegistry(profile="official")
@@ -48,12 +49,21 @@ class PythonMathToolTest(unittest.TestCase):
         self.assertEqual("12", result.result_summary)
 
     def test_dangerous_import_and_file_access_are_rejected(self):
-        for code in ("import os\nprint(os.listdir('.'))", "print(open('secret.txt').read())"):
+        for code in (
+            "import os\nprint(os.listdir('.'))",
+            "print(open('secret.txt').read())",
+            "import sympy as sp\nprint(sp.sympify(\"__import__('os').getcwd()\"))",
+        ):
             result = PythonMathTool().invoke({"code": code})
             self.assertEqual("rejected", result.status)
             self.assertIn(
                 result.error_category,
-                {"import_not_allowed", "name_not_allowed", "call_not_allowed"},
+                {
+                    "import_not_allowed",
+                    "name_not_allowed",
+                    "call_not_allowed",
+                    "attribute_not_allowed",
+                },
             )
 
     def test_subprocess_timeout_is_explicit(self):

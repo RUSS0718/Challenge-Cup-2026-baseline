@@ -38,6 +38,13 @@ _SENSITIVE_SUMMARY_KEYS = {
     "secret",
     "token",
 }
+_FORBIDDEN_ATTRIBUTES = {
+    "eval",
+    "exec",
+    "lambdify",
+    "parse_expr",
+    "sympify",
+}
 
 
 @dataclass(frozen=True)
@@ -151,7 +158,7 @@ class ToolRegistry:
             executor.shutdown(wait=False, cancel_futures=True)
             return ToolExecutionResult(
                 status="error",
-                parameter_summary=_summary(arguments),
+                parameter_summary=_parameter_summary(arguments),
                 result_summary=type(exc).__name__,
                 error_category="tool_execution_error",
                 duration_seconds=_duration(started),
@@ -160,7 +167,7 @@ class ToolRegistry:
             executor.shutdown(wait=True)
         return ToolExecutionResult(
             status="success",
-            parameter_summary=_summary(arguments),
+            parameter_summary=_parameter_summary(arguments),
             value=value,
             result_summary=_summary(value),
             duration_seconds=_duration(started),
@@ -206,7 +213,7 @@ class PythonMathTool:
         except OSError as exc:
             return ToolExecutionResult(
                 status="error",
-                parameter_summary=_summary(arguments),
+                parameter_summary=_parameter_summary(arguments),
                 result_summary=type(exc).__name__,
                 error_category="python_process_error",
                 duration_seconds=_duration(started),
@@ -221,7 +228,7 @@ class PythonMathTool:
         output = completed.stdout.strip()
         return ToolExecutionResult(
             status="success",
-            parameter_summary=_summary(arguments),
+            parameter_summary=_parameter_summary(arguments),
             value=output,
             result_summary=_summary(output),
             duration_seconds=_duration(started),
@@ -242,7 +249,7 @@ def _validate_source(source: str) -> None:
             if node.id in _FORBIDDEN_NAMES or node.id.startswith("__"):
                 raise ValueError("name_not_allowed")
         elif isinstance(node, ast.Attribute):
-            if node.attr.startswith("_"):
+            if node.attr.startswith("_") or node.attr in _FORBIDDEN_ATTRIBUTES:
                 raise ValueError("attribute_not_allowed")
         elif isinstance(node, ast.Call):
             function = node.func
@@ -282,6 +289,22 @@ def _summary(value: Any, *, key: str | None = None) -> str:
         value = [_summary(item) for item in value]
     text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
     return text[:MAX_SUMMARY_CHARS]
+
+
+def _parameter_summary(arguments: Mapping[str, Any]) -> str:
+    """Describe argument shape without persisting request values or code."""
+
+    summary: dict[str, Any] = {}
+    for name, value in sorted(arguments.items(), key=lambda item: str(item[0])):
+        key = str(name)
+        if key.lower() in _SENSITIVE_SUMMARY_KEYS:
+            summary[key] = "[redacted]"
+            continue
+        item: dict[str, Any] = {"type": type(value).__name__}
+        if isinstance(value, (str, bytes, list, tuple, dict)):
+            item["length"] = len(value)
+        summary[key] = item
+    return _summary(summary)
 
 
 _WORKER_SCRIPT = r'''

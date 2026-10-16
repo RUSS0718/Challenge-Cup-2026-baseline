@@ -71,3 +71,7 @@ Each phase writes an artifact and an exit condition. A failed risk spike returns
 For each slice: write a failing test or executable acceptance case, implement the smallest change, run the focused check, run the relevant full suite, review the diff, and commit one logical change. Keep official baseline files byte-stable unless a release decision explicitly authorizes a new baseline.
 
 The repository setup contract is documented in `docs/engineering-bootstrap-plan.md`; the baseline and product-sidecar boundary are documented in `BASELINE.json`, `docs/release-boundary.md`, and `GAP.md`.
+
+## Git 分支与提交规范
+
+创建或重命名分支、提交代码、合并分支或记录发布时，先读取 [`docs/engineering/commit-convention.md`](docs/engineering/commit-convention.md)。集成分支不使用工具前缀；提交主题使用 `type(scope): 中文描述`，例如 `feat(showcase): 增加 Run 快照与 Profile 边界`。新提交遵循该规范，已有历史不主动重写。

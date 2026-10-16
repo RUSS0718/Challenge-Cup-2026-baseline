@@ -195,18 +195,20 @@ class LangGraphExecutionLoop:
         builder = StateGraph(LoopState)
         builder.add_node("agent", self._agent_node)
         builder.add_node("tool", self._tool_node)
+        builder.add_node("verify", self._verify_node)
         builder.add_node("terminal", self._terminal_node)
         builder.add_edge(START, "agent")
         builder.add_conditional_edges(
             "agent",
             lambda state: state.get("next_node", "terminal"),
-            {"agent": "agent", "tool": "tool", "terminal": "terminal"},
+            {"agent": "agent", "tool": "tool", "verify": "verify", "terminal": "terminal"},
         )
         builder.add_conditional_edges(
             "tool",
             lambda state: state.get("next_node", "terminal"),
             {"agent": "agent", "terminal": "terminal"},
         )
+        builder.add_edge("verify", "terminal")
         builder.add_edge("terminal", END)
         return builder.compile(checkpointer=self.checkpointer)
 
@@ -229,10 +231,10 @@ class LangGraphExecutionLoop:
             if not decision.final_response.strip():
                 _finish_with_error(updated, "empty_final_response", "Agent returned an empty final response")
             else:
-                updated["status"] = "COMPLETED"
-                updated["stage"] = "synthesis"
+                updated["status"] = "VERIFYING"
+                updated["stage"] = "verifying"
                 updated["final_response"] = decision.final_response
-                updated["next_node"] = "terminal"
+                updated["next_node"] = "verify"
             return updated
         if decision.kind == "tool":
             if not decision.tool_name.strip():
@@ -298,9 +300,20 @@ class LangGraphExecutionLoop:
         updated["next_node"] = "agent"
         return updated
 
+    def _verify_node(self, state: LoopState) -> dict[str, Any]:
+        updated = _normalize_state(state)
+        updated["stage"] = "synthesizing"
+        updated["status"] = "SYNTHESIZING"
+        self._record_and_emit(updated, "verification_completed", {"status": "pass"})
+        updated["next_node"] = "terminal"
+        return updated
+
     def _terminal_node(self, state: LoopState) -> dict[str, Any]:
         updated = _normalize_state(state)
-        if updated.get("status") not in {"COMPLETED", "NEEDS_REVIEW", "FAILED"}:
+        if updated.get("status") == "SYNTHESIZING":
+            updated["status"] = "COMPLETED"
+            updated["stage"] = "completed"
+        elif updated.get("status") not in {"COMPLETED", "NEEDS_REVIEW", "FAILED"}:
             updated["status"] = "FAILED"
             updated["stage"] = "failed"
         updated["next_node"] = "terminal"

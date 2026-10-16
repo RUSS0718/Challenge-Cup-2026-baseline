@@ -36,9 +36,18 @@ class LangGraphLoopTest(unittest.TestCase):
         result = loop.run({"run_id": "run_success", "problem": "计算 1+1"})
 
         self.assertEqual("COMPLETED", result["status"])
+        self.assertEqual("completed", result["stage"])
         self.assertEqual("2", result["final_response"])
         self.assertEqual([("python", {"code": "1+1"})], tools.calls)
-        self.assertEqual(["run_received", "agent_decision", "tool_completed", "agent_decision", "run_terminal"],
+        self.assertEqual(
+            [
+                "run_received",
+                "agent_decision",
+                "tool_completed",
+                "agent_decision",
+                "verification_completed",
+                "run_terminal",
+            ],
                          [event["type"] for event in result["events"]])
 
     def test_tool_failure_is_reviewable_and_resume_keeps_failure_event(self):

@@ -23,6 +23,7 @@ from .run_service import (
     RunValidationError,
 )
 from .storage import PersistenceError, SQLiteStore
+from .tools import PythonMathTool, ToolRegistry, ToolSpec
 
 __all__ = [
     "AgentAdapter",
@@ -42,4 +43,7 @@ __all__ = [
     "SHOWCASE_PROFILE",
     "SQLiteStore",
     "ToolExecutionResult",
+    "ToolRegistry",
+    "ToolSpec",
+    "PythonMathTool",
 ]

@@ -22,6 +22,7 @@ class ToolRegistryTest(unittest.TestCase):
         exhausted = registry.invoke("double", {"value": 3})
         self.assertEqual("rejected", exhausted.status)
         self.assertEqual("tool_budget_exhausted", exhausted.error_category)
+        self.assertIn("value", exhausted.parameter_summary)
 
     def test_parameter_summary_redacts_sensitive_values(self):
         registry = ToolRegistry()
@@ -47,6 +48,14 @@ class PythonMathToolTest(unittest.TestCase):
         result = PythonMathTool().invoke({"code": "import sympy as sp\nprint(sp.factor(12))"})
         self.assertEqual("success", result.status)
         self.assertEqual("12", result.result_summary)
+
+    def test_registry_preserves_python_tool_error_status(self):
+        registry = ToolRegistry()
+        registry.register_python_math()
+        result = registry.invoke("python_math", {"code": "print(1 / 0)"})
+        self.assertEqual("error", result.status)
+        self.assertEqual("python_execution_error", result.error_category)
+        self.assertIn("code", result.parameter_summary)
 
     def test_dangerous_import_and_file_access_are_rejected(self):
         for code in (

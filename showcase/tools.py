@@ -131,20 +131,20 @@ class ToolRegistry:
         started = time.monotonic()
         entry = self._handlers.get(name)
         if entry is None:
-            return _result("rejected", "tool_not_registered", started)
+            return _result("rejected", "tool_not_registered", started, arguments)
         spec, handler = entry
         if self.profile not in spec.allowed_profiles:
-            return _result("rejected", "tool_not_permitted_for_profile", started)
+            return _result("rejected", "tool_not_permitted_for_profile", started, arguments)
         if not isinstance(arguments, Mapping):
             return _result("rejected", "tool_arguments_must_be_object", started)
         try:
             encoded = json.dumps(arguments, ensure_ascii=False, default=str).encode("utf-8")
         except (TypeError, ValueError):
-            return _result("rejected", "tool_arguments_not_serializable", started)
+            return _result("rejected", "tool_arguments_not_serializable", started, arguments)
         if len(encoded) > self.max_input_bytes:
-            return _result("rejected", "tool_input_too_large", started)
+            return _result("rejected", "tool_input_too_large", started, arguments)
         if self._call_count >= self.max_calls:
-            return _result("rejected", "tool_budget_exhausted", started)
+            return _result("rejected", "tool_budget_exhausted", started, arguments)
         self._call_count += 1
         executor = ThreadPoolExecutor(max_workers=1)
         try:
@@ -153,7 +153,7 @@ class ToolRegistry:
         except FutureTimeoutError:
             future.cancel()
             executor.shutdown(wait=False, cancel_futures=True)
-            return _result("timeout", "tool_timeout", started)
+            return _result("timeout", "tool_timeout", started, arguments)
         except Exception as exc:  # noqa: BLE001 - tool failures become product data
             executor.shutdown(wait=False, cancel_futures=True)
             return ToolExecutionResult(
@@ -165,6 +165,15 @@ class ToolRegistry:
             )
         else:
             executor.shutdown(wait=True)
+        if isinstance(value, ToolExecutionResult):
+            return ToolExecutionResult(
+                status=value.status,
+                parameter_summary=value.parameter_summary or _parameter_summary(arguments),
+                result_summary=value.result_summary,
+                value=value.value,
+                error_category=value.error_category,
+                duration_seconds=value.duration_seconds or _duration(started),
+            )
         return ToolExecutionResult(
             status="success",
             parameter_summary=_parameter_summary(arguments),
@@ -191,14 +200,14 @@ class PythonMathTool:
             return _result("rejected", "arguments_must_be_object", started)
         source = arguments.get("code", arguments.get("expression"))
         if not isinstance(source, str) or not source.strip():
-            return _result("rejected", "code_must_be_non_empty", started)
+            return _result("rejected", "code_must_be_non_empty", started, arguments)
         source = source.strip()
         if len(source) > self.max_source_chars:
-            return _result("rejected", "code_too_large", started)
+            return _result("rejected", "code_too_large", started, arguments)
         try:
             _validate_source(source)
         except ValueError as exc:
-            return _result("rejected", str(exc), started)
+            return _result("rejected", str(exc), started, arguments)
         try:
             completed = subprocess.run(
                 [sys.executable, "-I", "-c", _WORKER_SCRIPT],
@@ -209,7 +218,7 @@ class PythonMathTool:
                 check=False,
             )
         except subprocess.TimeoutExpired:
-            return _result("timeout", "python_timeout", started)
+            return _result("timeout", "python_timeout", started, arguments)
         except OSError as exc:
             return ToolExecutionResult(
                 status="error",
@@ -221,6 +230,7 @@ class PythonMathTool:
         if completed.returncode != 0:
             return ToolExecutionResult(
                 status="error",
+                parameter_summary=_parameter_summary(arguments),
                 result_summary=_summary(completed.stderr),
                 error_category="python_execution_error",
                 duration_seconds=_duration(started),
@@ -265,9 +275,15 @@ def _validate_source(source: str) -> None:
             raise ValueError("syntax_not_allowed")
 
 
-def _result(status: str, category: str, started: float) -> ToolExecutionResult:
+def _result(
+    status: str,
+    category: str,
+    started: float,
+    arguments: Mapping[str, Any] | None = None,
+) -> ToolExecutionResult:
     return ToolExecutionResult(
         status=status,  # type: ignore[arg-type]
+        parameter_summary=_parameter_summary(arguments) if isinstance(arguments, Mapping) else "",
         error_category=category,
         result_summary=category,
         duration_seconds=_duration(started),

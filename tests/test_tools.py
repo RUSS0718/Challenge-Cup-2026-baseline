@@ -23,6 +23,13 @@ class ToolRegistryTest(unittest.TestCase):
         self.assertEqual("rejected", exhausted.status)
         self.assertEqual("tool_budget_exhausted", exhausted.error_category)
 
+    def test_parameter_summary_redacts_sensitive_values(self):
+        registry = ToolRegistry()
+        registry.register("echo", lambda args: args.get("value", "ok"))
+        result = registry.invoke("echo", {"secret": "omit-me", "value": 3})
+        self.assertNotIn("omit-me", result.parameter_summary)
+        self.assertIn("[redacted]", result.parameter_summary)
+
     def test_profile_permission_and_timeout_are_structured(self):
         registry = ToolRegistry(profile="official")
         registry.register("showcase_only", lambda _args: "ok")

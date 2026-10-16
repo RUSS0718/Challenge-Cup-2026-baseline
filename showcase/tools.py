@@ -29,6 +29,15 @@ _FORBIDDEN_NAMES = {
     "input",
     "open",
 }
+_SENSITIVE_SUMMARY_KEYS = {
+    "api_key",
+    "authorization",
+    "credential",
+    "password",
+    "prompt",
+    "secret",
+    "token",
+}
 
 
 @dataclass(frozen=True)
@@ -262,7 +271,15 @@ def _duration(started: float) -> float:
     return round(time.monotonic() - started, 3)
 
 
-def _summary(value: Any) -> str:
+def _summary(value: Any, *, key: str | None = None) -> str:
+    if key is not None and key.lower() in _SENSITIVE_SUMMARY_KEYS:
+        return "[redacted]"
+    if isinstance(value, Mapping):
+        value = {
+            str(name): _summary(item, key=str(name)) for name, item in value.items()
+        }
+    elif isinstance(value, (list, tuple)):
+        value = [_summary(item) for item in value]
     text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
     return text[:MAX_SUMMARY_CHARS]
 

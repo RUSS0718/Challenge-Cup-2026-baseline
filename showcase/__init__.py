@@ -6,6 +6,7 @@ future product-only dependencies.
 """
 
 from .profile import OFFICIAL_PROFILE, SHOWCASE_PROFILE, ProfileBoundaryError
+from .storage import PersistenceError, SQLiteStore
 from .run_service import (
     AgentAdapter,
     AgentResult,
@@ -22,9 +23,11 @@ __all__ = [
     "FakeAgentAdapter",
     "OFFICIAL_PROFILE",
     "ProfileBoundaryError",
+    "PersistenceError",
     "RunNotFoundError",
     "RunRequest",
     "RunService",
     "RunValidationError",
     "SHOWCASE_PROFILE",
+    "SQLiteStore",
 ]

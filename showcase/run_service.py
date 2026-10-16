@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from .profile import SHOWCASE_PROFILE, ensure_showcase_profile
+from .storage import SQLiteStore
 
 MAX_PROBLEM_CHARS = 10_000
 MAX_ASSET_REFS = 32
@@ -84,11 +85,12 @@ class RunService:
         agent: AgentAdapter | None = None,
         *,
         profile: str = SHOWCASE_PROFILE,
+        database_path: str | Any = ":memory:",
     ) -> None:
         ensure_showcase_profile(profile)
         self.profile = profile
         self._agent = agent or FakeAgentAdapter()
-        self._runs: dict[str, dict[str, Any]] = {}
+        self._store = SQLiteStore(database_path)
 
     def create_run(self, request: RunRequest | Mapping[str, Any]) -> dict[str, Any]:
         """Validate, execute once through the Agent seam, and return a snapshot."""
@@ -109,6 +111,12 @@ class RunService:
             "created_at": now,
             "updated_at": now,
         }
+        self._store.save_run(snapshot)
+        self._store.append_event(
+            run_id,
+            {"type": "run_received", "status": snapshot["status"], "stage": snapshot["stage"]},
+        )
+        self._store.save_checkpoint(run_id, snapshot)
 
         try:
             result = self._normalize_result(self._agent.run(normalized))
@@ -120,6 +128,15 @@ class RunService:
                     "error": {"category": "agent_failure", "summary": type(exc).__name__},
                     "updated_at": _utc_now(),
                 }
+            )
+            self._store.append_event(
+                run_id,
+                {
+                    "type": "run_failed",
+                    "status": snapshot["status"],
+                    "stage": snapshot["stage"],
+                    "error": snapshot["error"],
+                },
             )
         else:
             snapshot.update(
@@ -134,18 +151,66 @@ class RunService:
                     "updated_at": _utc_now(),
                 }
             )
+            self._store.append_event(
+                run_id,
+                {
+                    "type": "agent_completed",
+                    "status": snapshot["status"],
+                    "stage": snapshot["stage"],
+                    "summary": result.summary,
+                },
+            )
+            self._store.append_event(
+                run_id,
+                {"type": "run_completed", "status": snapshot["status"], "stage": snapshot["stage"]},
+            )
 
-        self._runs[run_id] = snapshot
+        self._store.save_run(snapshot)
+        self._store.save_checkpoint(run_id, snapshot)
         return self._copy_snapshot(snapshot)
 
     def get_run(self, run_id: str) -> dict[str, Any]:
         """Return an isolated snapshot so callers cannot mutate service state."""
 
-        try:
-            snapshot = self._runs[run_id]
-        except KeyError as exc:
-            raise RunNotFoundError(run_id) from exc
+        snapshot = self._store.get_run(run_id)
+        if snapshot is None:
+            raise RunNotFoundError(run_id)
         return self._copy_snapshot(snapshot)
+
+    def get_events(self, run_id: str) -> list[dict[str, Any]]:
+        """Return append-only events for a Run."""
+
+        self._require_run(run_id)
+        return copy.deepcopy(self._store.get_events(run_id))
+
+    def append_event(self, run_id: str, event: Mapping[str, Any]) -> dict[str, Any]:
+        """Append a redacted observable event without rewriting Run history."""
+
+        self._require_run(run_id)
+        return self._store.append_event(run_id, event)
+
+    def get_checkpoint(self, run_id: str) -> dict[str, Any] | None:
+        """Read the most recent recoverable checkpoint."""
+
+        self._require_run(run_id)
+        return self._store.get_checkpoint(run_id)
+
+    def save_checkpoint(self, run_id: str, checkpoint: Mapping[str, Any]) -> None:
+        """Replace the latest checkpoint while retaining previous events."""
+
+        self._require_run(run_id)
+        self._store.save_checkpoint(run_id, checkpoint)
+
+    def close(self) -> None:
+        """Release the product persistence connection."""
+
+        self._store.close()
+
+    def _require_run(self, run_id: str) -> dict[str, Any]:
+        snapshot = self._store.get_run(run_id)
+        if snapshot is None:
+            raise RunNotFoundError(run_id)
+        return snapshot
 
     def health(self) -> dict[str, str]:
         """Return a credential-free service health response."""

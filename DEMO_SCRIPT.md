@@ -11,3 +11,17 @@
 7. 最后说明：官方 `user_agent.py` 仍保持独立基线；产品侧车服务数学求解的工程连续性、解释性和复核性。
 
 演示必须明确区分实时运行、回放运行和计划中的功能。
+
+## V0.1 Showcase 路径
+
+无凭证时使用确定性的回放证据：
+
+```shell
+python showcase_server.py --host 127.0.0.1 --port 8090
+python scripts/check_showcase_release.py
+```
+
+浏览器页面通过 `POST /api/runs` 创建 live Run，随后读取事件和 Evidence
+Pack；`docs/replay/showcase-replay-v0.1.json` 明确标为 replay，其中包含一次
+Python 工具超时、checkpoint 恢复和最终结果。Python 工具显示为 experimental，
+多模态端点在没有真实题目输入或凭证时显示为 unavailable。

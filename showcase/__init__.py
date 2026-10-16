@@ -23,6 +23,7 @@ from .graph import (
     ToolExecutionResult,
 )
 from .profile import OFFICIAL_PROFILE, SHOWCASE_PROFILE, ProfileBoundaryError
+from .replay import ReplayValidationError, load_replay, write_sample_replay
 from .run_service import (
     AgentAdapter,
     AgentResult,
@@ -72,4 +73,7 @@ __all__ = [
     "EvidencePackExporter",
     "LightweightVerificationHook",
     "VerificationResult",
+    "ReplayValidationError",
+    "load_replay",
+    "write_sample_replay",
 ]

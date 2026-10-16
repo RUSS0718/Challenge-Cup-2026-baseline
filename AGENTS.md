@@ -72,6 +72,10 @@ For each slice: write a failing test or executable acceptance case, implement th
 
 The repository setup contract is documented in `docs/engineering-bootstrap-plan.md`; the baseline and product-sidecar boundary are documented in `BASELINE.json`, `docs/release-boundary.md`, and `GAP.md`.
 
+## 搜索与检查入口
+
+搜索代码时使用 `rg` 或 `rg --files`，默认排除 `.venv/`、`__pycache__/`、`.pytest_cache/`、`.ruff_cache/`、`artifacts/` 和构建产物；不要递归读取虚拟环境。运行仓库合同检查使用 `python scripts/check.py --offline`，产品发布检查使用 `python scripts/check_showcase_release.py`。
+
 ## Git 分支与提交规范
 
 创建或重命名分支、提交代码、合并分支或记录发布时，先读取 [`docs/engineering/commit-convention.md`](docs/engineering/commit-convention.md)。集成分支不使用工具前缀；提交主题使用 `type(scope): 中文描述`，例如 `feat(showcase): 增加 Run 快照与 Profile 边界`。新提交遵循该规范，已有历史不主动重写。

@@ -58,7 +58,7 @@ make demo-check  # Demo health/contract checks
 make clean       # 清理可重建缓存，不删除 artifacts 证据
 ```
 
-Windows/PowerShell 和 Codespace 应调用同一 Python 模块或跨平台脚本，避免维护两套命令。
+当前仓库使用跨平台入口 `python scripts/check.py --offline`；Windows/PowerShell、Codespace 和 CI 应调用这一入口，避免维护两套命令。
 
 ### 5. 本地 hook 与 CI 双重验证
 

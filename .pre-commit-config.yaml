@@ -3,9 +3,9 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
-        files: ^(AGENTS\.md|README\.md|DEMO_SCRIPT\.md|GAP\.md|GLOSSARY\.md|docs/|examples/|scripts/|\.devcontainer/|\.github/|pyproject\.toml|pytest\.ini|\.pre-commit-config\.yaml|\.python-version|demo_server\.py|llm_client\.py|tests/test_demo_server\.py)$
+        files: ^(AGENTS\.md|README\.md|DEMO_SCRIPT\.md|GAP\.md|GLOSSARY\.md|docs/|examples/|scripts/|showcase/|\.devcontainer/|\.github/|pyproject\.toml|pytest\.ini|\.pre-commit-config\.yaml|\.python-version|demo_server\.py|showcase_server\.py|llm_client\.py|tests/)$
       - id: end-of-file-fixer
-        files: ^(AGENTS\.md|README\.md|DEMO_SCRIPT\.md|GAP\.md|GLOSSARY\.md|docs/|examples/|scripts/|\.devcontainer/|\.github/|pyproject\.toml|pytest\.ini|\.pre-commit-config\.yaml|\.python-version|demo_server\.py|llm_client\.py|tests/test_demo_server\.py)$
+        files: ^(AGENTS\.md|README\.md|DEMO_SCRIPT\.md|GAP\.md|GLOSSARY\.md|docs/|examples/|scripts/|showcase/|\.devcontainer/|\.github/|pyproject\.toml|pytest\.ini|\.pre-commit-config\.yaml|\.python-version|demo_server\.py|showcase_server\.py|llm_client\.py|tests/)$
       - id: check-yaml
         files: ^(\.devcontainer/|\.github/|\.pre-commit-config\.yaml)$
       - id: check-json
@@ -14,7 +14,7 @@ repos:
     rev: v0.11.10
     hooks:
       - id: ruff-check
-        files: ^(demo_server\.py|llm_client\.py|scripts/|tests/test_demo_server\.py)$
+        files: ^(demo_server\.py|showcase_server\.py|llm_client\.py|showcase/|scripts/|tests/)$
         args: [--fix]
       - id: ruff-format
-        files: ^(demo_server\.py|llm_client\.py|scripts/|tests/test_demo_server\.py)$
+        files: ^(demo_server\.py|showcase_server\.py|llm_client\.py|showcase/|scripts/|tests/)$

@@ -28,5 +28,7 @@ jobs:
         run: uv run pre-commit run --all-files
       - name: Run tests
         run: uv run pytest -q
-      - name: Verify workspace contract
-        run: uv run python scripts/check_workspace.py --offline
+      - name: Run repository contract checks
+        run: uv run python scripts/check.py --offline
+      - name: Run Showcase release gate
+        run: uv run python scripts/check_showcase_release.py

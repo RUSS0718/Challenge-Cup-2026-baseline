@@ -5,8 +5,8 @@ command -v uv >/dev/null 2>&1 || { echo "uv is required: https://docs.astral.sh/
 uv sync --all-groups
 uv run pre-commit install --install-hooks
 if [[ "${1:-}" == "--offline" ]]; then
-  uv run python scripts/check_workspace.py --offline
+  uv run python scripts/check.py --offline
 else
-  uv run python scripts/check_workspace.py
+  uv run python scripts/check.py
 fi
 printf '%s\n' "MathAgent development environment is ready."

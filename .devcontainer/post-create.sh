@@ -8,5 +8,5 @@ fi
 
 uv sync --all-groups
 uv run pre-commit install --install-hooks
-uv run python scripts/check_workspace.py --offline
-printf '\nMathAgent Codespace is ready. Run: uv run pytest -q\n'
+uv run python scripts/check.py --offline
+printf '\nMathAgent Codespace is ready. Run: uv run python scripts/check.py --offline\n'

@@ -201,6 +201,25 @@ class RunService:
         self._require_run(run_id)
         self._store.save_checkpoint(run_id, checkpoint)
 
+    def transition(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        stage: str,
+        error: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Persist a product-level status transition without rewriting events."""
+
+        snapshot = self._require_run(run_id)
+        snapshot["status"] = status
+        snapshot["stage"] = stage
+        snapshot["error"] = dict(error) if error is not None else None
+        snapshot["updated_at"] = _utc_now()
+        self._store.save_run(snapshot)
+        self._store.save_checkpoint(run_id, snapshot)
+        return self._copy_snapshot(snapshot)
+
     def close(self) -> None:
         """Release the product persistence connection."""
 

@@ -14,6 +14,7 @@ from .adapters import (
     ModelResponse,
     ToolRequest,
 )
+from .evidence import EvidencePackExporter
 from .graph import (
     AgentDecision,
     GraphDependencyError,
@@ -33,6 +34,7 @@ from .run_service import (
 )
 from .storage import PersistenceError, SQLiteStore
 from .tools import PythonMathTool, ToolRegistry, ToolSpec
+from .verification import LightweightVerificationHook, VerificationResult
 from .vision import ImageAsset, VisionAdapter, VisionInputError, VisionResult
 
 __all__ = [
@@ -67,4 +69,7 @@ __all__ = [
     "VisionAdapter",
     "VisionInputError",
     "VisionResult",
+    "EvidencePackExporter",
+    "LightweightVerificationHook",
+    "VerificationResult",
 ]

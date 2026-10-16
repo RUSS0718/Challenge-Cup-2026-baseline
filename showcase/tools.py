@@ -15,6 +15,7 @@ from typing import Any
 
 from .graph import ToolExecutionResult
 from .profile import SHOWCASE_PROFILE
+from .redaction import summarize_parameters
 
 MAX_TOOL_INPUT_BYTES = 32_000
 MAX_SUMMARY_CHARS = 1_000
@@ -28,15 +29,6 @@ _FORBIDDEN_NAMES = {
     "exec",
     "input",
     "open",
-}
-_SENSITIVE_SUMMARY_KEYS = {
-    "api_key",
-    "authorization",
-    "credential",
-    "password",
-    "prompt",
-    "secret",
-    "token",
 }
 _FORBIDDEN_ATTRIBUTES = {
     "eval",
@@ -158,7 +150,7 @@ class ToolRegistry:
             executor.shutdown(wait=False, cancel_futures=True)
             return ToolExecutionResult(
                 status="error",
-                parameter_summary=_parameter_summary(arguments),
+                parameter_summary=summarize_parameters(arguments),
                 result_summary=type(exc).__name__,
                 error_category="tool_execution_error",
                 duration_seconds=_duration(started),
@@ -168,7 +160,7 @@ class ToolRegistry:
         if isinstance(value, ToolExecutionResult):
             return ToolExecutionResult(
                 status=value.status,
-                parameter_summary=value.parameter_summary or _parameter_summary(arguments),
+                parameter_summary=value.parameter_summary or summarize_parameters(arguments),
                 result_summary=value.result_summary,
                 value=value.value,
                 error_category=value.error_category,
@@ -176,7 +168,7 @@ class ToolRegistry:
             )
         return ToolExecutionResult(
             status="success",
-            parameter_summary=_parameter_summary(arguments),
+            parameter_summary=summarize_parameters(arguments),
             value=value,
             result_summary=_summary(value),
             duration_seconds=_duration(started),
@@ -222,7 +214,7 @@ class PythonMathTool:
         except OSError as exc:
             return ToolExecutionResult(
                 status="error",
-                parameter_summary=_parameter_summary(arguments),
+                parameter_summary=summarize_parameters(arguments),
                 result_summary=type(exc).__name__,
                 error_category="python_process_error",
                 duration_seconds=_duration(started),
@@ -230,7 +222,7 @@ class PythonMathTool:
         if completed.returncode != 0:
             return ToolExecutionResult(
                 status="error",
-                parameter_summary=_parameter_summary(arguments),
+                parameter_summary=summarize_parameters(arguments),
                 result_summary=_summary(completed.stderr),
                 error_category="python_execution_error",
                 duration_seconds=_duration(started),
@@ -238,7 +230,7 @@ class PythonMathTool:
         output = completed.stdout.strip()
         return ToolExecutionResult(
             status="success",
-            parameter_summary=_parameter_summary(arguments),
+            parameter_summary=summarize_parameters(arguments),
             value=output,
             result_summary=_summary(output),
             duration_seconds=_duration(started),
@@ -283,7 +275,7 @@ def _result(
 ) -> ToolExecutionResult:
     return ToolExecutionResult(
         status=status,  # type: ignore[arg-type]
-        parameter_summary=_parameter_summary(arguments) if isinstance(arguments, Mapping) else "",
+        parameter_summary=summarize_parameters(arguments) if isinstance(arguments, Mapping) else "",
         error_category=category,
         result_summary=category,
         duration_seconds=_duration(started),
@@ -294,34 +286,13 @@ def _duration(started: float) -> float:
     return round(time.monotonic() - started, 3)
 
 
-def _summary(value: Any, *, key: str | None = None) -> str:
-    if key is not None and key.lower() in _SENSITIVE_SUMMARY_KEYS:
-        return "[redacted]"
+def _summary(value: Any) -> str:
     if isinstance(value, Mapping):
-        value = {
-            str(name): _summary(item, key=str(name)) for name, item in value.items()
-        }
+        value = {str(name): _summary(item) for name, item in value.items()}
     elif isinstance(value, (list, tuple)):
         value = [_summary(item) for item in value]
     text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
     return text[:MAX_SUMMARY_CHARS]
-
-
-def _parameter_summary(arguments: Mapping[str, Any]) -> str:
-    """Describe argument shape without persisting request values or code."""
-
-    summary: dict[str, Any] = {}
-    for name, value in sorted(arguments.items(), key=lambda item: str(item[0])):
-        key = str(name)
-        if key.lower() in _SENSITIVE_SUMMARY_KEYS:
-            summary[key] = "[redacted]"
-            continue
-        item: dict[str, Any] = {"type": type(value).__name__}
-        if isinstance(value, (str, bytes, list, tuple, dict)):
-            item["length"] = len(value)
-        summary[key] = item
-    return _summary(summary)
-
 
 _WORKER_SCRIPT = r'''
 import builtins

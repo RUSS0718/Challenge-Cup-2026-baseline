@@ -21,7 +21,8 @@ python showcase_server.py --host 127.0.0.1 --port 8090
 python scripts/check_showcase_release.py
 ```
 
-浏览器页面通过 `POST /api/runs` 创建 live Run，随后读取事件和 Evidence
+浏览器页面通过 `POST /api/runs` 创建当前模式的 Run（默认是 credential-free
+fake；使用 `--mode live` 才接入 Intern），随后读取事件和 Evidence
 Pack；`docs/replay/showcase-replay-v0.1.json` 明确标为 replay，其中包含一次
 Python 工具超时、checkpoint 恢复和最终结果。Python 工具显示为 experimental，
 多模态端点在没有真实题目输入或凭证时显示为 unavailable。

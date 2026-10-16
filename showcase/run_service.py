@@ -1,9 +1,4 @@
-"""In-memory Run application service for the ``showcase_mvp`` profile.
-
-This first product slice owns the public Run contract and uses a deterministic
-fake Agent. Persistence, graph execution, tools, and live model adapters are
-deliberately left to later slices behind the same adapter boundary.
-"""
+"""Run application service for the explicit ``showcase_mvp`` profile."""
 
 from __future__ import annotations
 
@@ -38,6 +33,15 @@ class RunNotFoundError(KeyError):
     def __init__(self, run_id: str) -> None:
         super().__init__(f"{self.category}: {run_id}")
         self.run_id = run_id
+
+
+class RunResumeUnavailable(RuntimeError):
+    """Raised when a service has no configured graph capable of resuming."""
+
+    category = "resume_unavailable"
+
+    def __init__(self) -> None:
+        super().__init__(self.category)
 
 
 @dataclass(frozen=True)
@@ -86,21 +90,27 @@ class RunService:
         *,
         profile: str = SHOWCASE_PROFILE,
         database_path: str | Any = ":memory:",
+        execution_loop: Any | None = None,
     ) -> None:
         ensure_showcase_profile(profile)
         self.profile = profile
         self._agent = agent or FakeAgentAdapter()
         self._store = SQLiteStore(database_path)
+        self._execution_loop = execution_loop
+        self.execution_mode = "live" if execution_loop is not None else "fake"
 
     def create_run(self, request: RunRequest | Mapping[str, Any]) -> dict[str, Any]:
         """Validate, execute once through the Agent seam, and return a snapshot."""
 
         normalized = self._normalize_request(request)
+        if self._execution_loop is not None:
+            return self._create_graph_run(normalized)
         now = _utc_now()
         run_id = f"run_{uuid.uuid4().hex}"
         snapshot = {
             "run_id": run_id,
             "profile": self.profile,
+            "execution_mode": self.execution_mode,
             "status": "RUNNING",
             "stage": "solving",
             "input_ref": _input_ref(normalized.problem),
@@ -167,6 +177,97 @@ class RunService:
 
         self._store.save_run(snapshot)
         self._store.save_checkpoint(run_id, snapshot)
+        return self._copy_snapshot(snapshot)
+
+    def _create_graph_run(self, request: RunRequest) -> dict[str, Any]:
+        """Run the configured LangGraph loop while persisting product checkpoints."""
+
+        now = _utc_now()
+        run_id = f"run_{uuid.uuid4().hex}"
+        snapshot = {
+            "run_id": run_id,
+            "profile": self.profile,
+            "execution_mode": self.execution_mode,
+            "status": "RECEIVED",
+            "stage": "planning",
+            "input_ref": _input_ref(request.problem),
+            "asset_refs": list(request.asset_refs),
+            "result": None,
+            "final_response": None,
+            "error": None,
+            "created_at": now,
+            "updated_at": now,
+        }
+        self._store.save_run(snapshot)
+        initial_state = {
+            "run_id": run_id,
+            "problem": request.problem,
+            "status": "RECEIVED",
+            "stage": "planning",
+            "events": [],
+            "tool_results": [],
+            "final_response": None,
+            "error": None,
+        }
+        self._configure_execution_loop()
+        try:
+            state = self._execution_loop.run(initial_state, thread_id=run_id)
+        except Exception as exc:  # noqa: BLE001 - graph failures become safe Run state
+            snapshot.update(
+                {
+                    "status": "FAILED",
+                    "stage": "failed",
+                    "error": {"category": "graph_execution_error", "summary": type(exc).__name__},
+                    "updated_at": _utc_now(),
+                }
+            )
+            self._store.save_run(snapshot)
+            self._store.append_event(run_id, {"type": "run_failed", **snapshot["error"]})
+            self._store.save_checkpoint(run_id, snapshot)
+            return self._copy_snapshot(snapshot)
+        return self._persist_graph_result(snapshot, state)
+
+    def resume_run(self, run_id: str) -> dict[str, Any]:
+        """Continue a recoverable graph state from the latest SQLite checkpoint."""
+
+        if self._execution_loop is None:
+            raise RunResumeUnavailable()
+        snapshot = self._require_run(run_id)
+        checkpoint = self._store.get_checkpoint(run_id)
+        if checkpoint is None:
+            raise RunResumeUnavailable()
+        self._configure_execution_loop()
+        state = self._execution_loop.resume(checkpoint, thread_id=run_id)
+        return self._persist_graph_result(snapshot, state)
+
+    def _configure_execution_loop(self) -> None:
+        self._execution_loop.event_sink = self._record_graph_event
+        self._execution_loop.checkpoint_sink = self._save_graph_checkpoint
+
+    def _record_graph_event(self, run_id: str, event: Mapping[str, Any]) -> None:
+        self._store.append_event(run_id, event)
+
+    def _save_graph_checkpoint(self, run_id: str, state: Mapping[str, Any]) -> None:
+        self._store.save_checkpoint(run_id, state)
+
+    def _persist_graph_result(
+        self, snapshot: dict[str, Any], state: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        snapshot.update(
+            {
+                "status": state.get("status", "FAILED"),
+                "stage": state.get("stage", "failed"),
+                "final_response": state.get("final_response"),
+                "error": state.get("error"),
+                "result": {
+                    "final_response": state.get("final_response"),
+                    "summary": "langgraph execution",
+                },
+                "updated_at": _utc_now(),
+            }
+        )
+        self._store.save_run(snapshot)
+        self._store.save_checkpoint(snapshot["run_id"], state)
         return self._copy_snapshot(snapshot)
 
     def get_run(self, run_id: str) -> dict[str, Any]:

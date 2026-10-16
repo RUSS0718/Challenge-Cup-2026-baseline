@@ -60,6 +60,7 @@ class VerificationEvidenceTest(unittest.TestCase):
         self.assertNotIn("FULL_IMAGE_VARIANT", serialized)
         self.assertEqual("pass", pack["verification"]["status"])
         self.assertEqual("event_1", pack["timeline"][0]["evidence_id"])
+        self.assertEqual("planned", pack["feature_status"]["multimodal"])
 
 
 if __name__ == "__main__":

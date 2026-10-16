@@ -30,6 +30,7 @@ from .run_service import (
     FakeAgentAdapter,
     RunNotFoundError,
     RunRequest,
+    RunResumeUnavailable,
     RunService,
     RunValidationError,
 )
@@ -55,6 +56,7 @@ __all__ = [
     "ProfileBoundaryError",
     "PersistenceError",
     "RunNotFoundError",
+    "RunResumeUnavailable",
     "RunRequest",
     "RunService",
     "RunValidationError",

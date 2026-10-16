@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import json
 import sqlite3
 from collections.abc import Mapping
@@ -10,15 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-_SENSITIVE_KEYS = {
-    "api_key",
-    "authorization",
-    "credential",
-    "password",
-    "prompt",
-    "secret",
-    "token",
-}
+from .redaction import redact
 
 
 class PersistenceError(RuntimeError):
@@ -114,7 +105,7 @@ class SQLiteStore:
     def append_event(self, run_id: str, event: Mapping[str, Any]) -> dict[str, Any]:
         """Append a redacted event with a monotonic per-Run sequence number."""
 
-        safe_event = _redact(event)
+        safe_event = redact(event)
         safe_event.setdefault("created_at", _utc_now())
         try:
             row = self._connection.execute(
@@ -135,7 +126,7 @@ class SQLiteStore:
             raise
         except sqlite3.Error as exc:
             raise PersistenceError("append_event") from exc
-        return copy.deepcopy(safe_event)
+        return json.loads(json.dumps(safe_event, ensure_ascii=False))
 
     def get_events(self, run_id: str) -> list[dict[str, Any]]:
         """Return append-only events in sequence order."""
@@ -151,7 +142,7 @@ class SQLiteStore:
     def save_checkpoint(self, run_id: str, checkpoint: Mapping[str, Any]) -> None:
         """Replace the latest checkpoint while retaining all events."""
 
-        safe_checkpoint = _redact(checkpoint)
+        safe_checkpoint = redact(checkpoint)
         try:
             self._connection.execute(
                 """
@@ -188,7 +179,7 @@ class SQLiteStore:
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT(run_id, artifact_id) DO UPDATE SET artifact_json=excluded.artifact_json
                 """,
-                (run_id, artifact_id, _json(_redact(artifact), "save_artifact"), _utc_now()),
+                (run_id, artifact_id, _json(redact(artifact), "save_artifact"), _utc_now()),
             )
             self._connection.commit()
         except sqlite3.Error as exc:
@@ -216,18 +207,6 @@ class SQLiteStore:
 
     def __exit__(self, *_args: object) -> None:
         self.close()
-
-
-def _redact(value: Any, *, key: str | None = None) -> Any:
-    if key is not None and key.lower() in _SENSITIVE_KEYS:
-        return "[redacted]"
-    if isinstance(value, Mapping):
-        return {str(name): _redact(item, key=str(name)) for name, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_redact(item) for item in value]
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    return str(value)
 
 
 def _json(value: Any, operation: str) -> str:

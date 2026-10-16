@@ -5,13 +5,17 @@ from __future__ import annotations
 import argparse
 import html
 import json
+from collections.abc import Mapping
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import urlsplit
 
+from .adapters import InternAgentAdapter, InternModelAdapter
 from .evidence import EvidencePackExporter
-from .run_service import RunNotFoundError, RunService, RunValidationError
+from .graph import LangGraphExecutionLoop
+from .run_service import RunNotFoundError, RunResumeUnavailable, RunService, RunValidationError
+from .tools import ToolRegistry
 from .verification import LightweightVerificationHook
 
 MAX_BODY_BYTES = 1_000_000
@@ -94,16 +98,12 @@ class ShowcaseHandler(BaseHTTPRequestHandler):
                 if snapshot["status"] not in {"FAILED", "NEEDS_REVIEW"}:
                     self._send_json(HTTPStatus.CONFLICT, {"error": "run_not_reviewable"})
                     return
-                self.application.run_service.append_event(
-                    run_id,
-                    {"type": "resume_requested", "status": "RESUMED", "stage": "solving", "summary": "resume requested"},
-                )
-                resumed = self.application.run_service.transition(
-                    run_id, status="RESUMED", stage="solving", error=None
-                )
+                resumed = self.application.run_service.resume_run(run_id)
                 self._send_json(HTTPStatus.OK, resumed)
             except RunNotFoundError as exc:
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": exc.category})
+            except RunResumeUnavailable as exc:
+                self._send_json(HTTPStatus.CONFLICT, {"error": exc.category})
             return
         self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
@@ -125,7 +125,7 @@ class ShowcaseHandler(BaseHTTPRequestHandler):
             return None
         return payload
 
-    def _send_json(self, status: HTTPStatus, payload: MappingLike) -> None:
+    def _send_json(self, status: HTTPStatus, payload: Mapping[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -137,19 +137,34 @@ class ShowcaseHandler(BaseHTTPRequestHandler):
         """Keep problem text, credentials, and provider output out of access logs."""
 
 
-class MappingLike(dict[str, Any]):
-    """Type alias substitute accepted by json.dumps without importing typing.Mapping."""
-
-
 def create_server(
     host: str = "127.0.0.1",
     port: int = 8090,
     *,
     service: RunService | None = None,
+    mode: str = "fake",
 ) -> ShowcaseServer:
     """Create a local Showcase server without starting its event loop."""
 
+    if service is None and mode == "live":
+        service = create_live_service()
+    if mode not in {"fake", "live"}:
+        raise ValueError("showcase_mode_invalid")
     return ShowcaseServer((host, port), ShowcaseHandler, service or RunService())
+
+
+def create_live_service(*, database_path: str = ":memory:") -> RunService:
+    """Build the live product path without touching the official profile."""
+
+    registry = ToolRegistry()
+    registry.register_python_math()
+    agent = InternAgentAdapter(
+        InternModelAdapter(),
+        role="solver",
+        tool_schemas=registry.describe(),
+    )
+    loop = LangGraphExecutionLoop(agent, registry)
+    return RunService(execution_loop=loop, database_path=database_path)
 
 
 def serve(host: str = "127.0.0.1", port: int = 8090) -> None:
@@ -189,7 +204,7 @@ document.getElementById('run').onclick=async()=>{{state.textContent='live';try{{
  const created=await fetch('/api/runs',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{problem:problem.value}})}}).then(r=>r.json());
  const events=await fetch('/api/runs/'+created.run_id+'/events').then(r=>r.json());
  const evidence=await fetch('/api/runs/'+created.run_id+'/evidence').then(r=>r.json());
- state.textContent=created.status+' / '+created.stage;
+ state.textContent=(created.execution_mode || 'unavailable')+' / '+created.status+' / '+created.stage;
  result.textContent=JSON.stringify({{run:created,events,evidence}},null,2);
 }}catch(error){{state.textContent='unavailable';result.textContent=String(error)}}}};
 </script></body></html>'''
@@ -199,8 +214,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Local subjective-evaluation Showcase API")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8090)
+    parser.add_argument("--mode", choices=("fake", "live"), default="fake")
     args = parser.parse_args()
-    serve(args.host, args.port)
+    with create_server(args.host, args.port, mode=args.mode) as server:
+        print(f"Showcase running at http://{args.host}:{args.port}/ ({args.mode})")
+        server.serve_forever()
 
 
 if __name__ == "__main__":

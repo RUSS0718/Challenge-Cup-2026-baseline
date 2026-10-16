@@ -171,6 +171,9 @@ class LangGraphExecutionLoop:
         state.setdefault("tool_results", [])
         if not state["events"]:
             _record_event(state, "run_received", {"status": state["status"], "stage": state["stage"]})
+            run_id = state.get("run_id")
+            if isinstance(run_id, str) and run_id:
+                self._emit(run_id, {"type": "run_received", "status": state["status"], "stage": state["stage"]}, state)
         config = {"configurable": {"thread_id": thread_id or state.get("run_id", "showcase-run")}}
         result = self._graph.invoke(state, config)
         return _copy_state(result)
@@ -207,7 +210,7 @@ class LangGraphExecutionLoop:
         builder.add_conditional_edges(
             "tool",
             lambda state: state.get("next_node", "terminal"),
-            {"agent": "agent", "terminal": "terminal"},
+            {"agent": "agent", "tool": "tool", "terminal": "terminal"},
         )
         builder.add_edge("verify", "terminal")
         builder.add_edge("terminal", END)
@@ -297,6 +300,19 @@ class LangGraphExecutionLoop:
         self._record_and_emit(updated, "tool_completed", tool_record)
         updated["pending_tool"] = None
         if result.status != "success":
+            if int(updated.get("retry_count", 0)) < self.budget.max_retries:
+                updated["retry_count"] = int(updated.get("retry_count", 0)) + 1
+                updated["status"] = "RUNNING"
+                updated["stage"] = "running"
+                updated["error"] = None
+                updated["pending_tool"] = {"name": name, "arguments": dict(arguments)}
+                updated["next_node"] = "tool"
+                self._record_and_emit(
+                    updated,
+                    "tool_retry",
+                    {"name": name, "retry_count": updated["retry_count"]},
+                )
+                return updated
             _finish_with_error(updated, result.error_category or f"tool_{result.status}", "Tool call failed")
             updated["status"] = "NEEDS_REVIEW"
             return updated
@@ -331,13 +347,22 @@ class LangGraphExecutionLoop:
         _record_event(state, event_type, payload)
         run_id = state.get("run_id")
         if isinstance(run_id, str) and run_id:
-            self._emit(run_id, {"type": event_type, **copy.deepcopy(dict(payload))})
+            self._emit(
+                run_id,
+                {"type": event_type, **copy.deepcopy(dict(payload))},
+                state,
+            )
 
-    def _emit(self, run_id: str, event: Mapping[str, Any]) -> None:
+    def _emit(
+        self,
+        run_id: str,
+        event: Mapping[str, Any],
+        checkpoint: Mapping[str, Any] | None = None,
+    ) -> None:
         if self.event_sink is not None:
             self.event_sink(run_id, event)
         if self.checkpoint_sink is not None:
-            self.checkpoint_sink(run_id, event)
+            self.checkpoint_sink(run_id, checkpoint or event)
 
 
 def _normalize_state(state: Mapping[str, Any]) -> LoopState:

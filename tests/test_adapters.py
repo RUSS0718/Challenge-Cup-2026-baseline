@@ -50,6 +50,23 @@ class AdapterTest(unittest.TestCase):
         result = adapter.run(RunRequest(problem="1+1"))
         self.assertEqual("答案是 2", result.final_response)
 
+    def test_deepagents_adapter_runs_product_tool_request_then_continues(self):
+        client = FakeClient(
+            [
+                '{"tool_call":{"name":"double","arguments":{"value":2}}}',
+                "工具结果已收到，最终答案是 4",
+            ]
+        )
+        calls = []
+
+        def double(value: int) -> str:
+            calls.append(value)
+            return str(value * 2)
+
+        result = DeepAgentsAdapter(client, tools=[double]).run(RunRequest(problem="计算 2*2"))
+        self.assertEqual([2], calls)
+        self.assertIn("最终答案是 4", result.final_response)
+
     def test_deepagents_adapter_keeps_dependency_failure_actionable(self):
         # The installed local environment supplies DeepAgents; this assertion
         # only documents the public category if a clean Showcase env omits it.

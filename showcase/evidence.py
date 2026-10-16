@@ -7,24 +7,8 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
+from .redaction import redact
 from .verification import VerificationResult
-
-_SENSITIVE_KEYS = {
-    "api_key",
-    "authorization",
-    "credential",
-    "hidden_answer",
-    "image",
-    "image_bytes",
-    "image_base64",
-    "full_image",
-    "full_image_bytes",
-    "full_image_base64",
-    "password",
-    "prompt",
-    "secret",
-    "token",
-}
 
 
 class EvidencePackExporter:
@@ -61,15 +45,15 @@ class EvidencePackExporter:
             "agent": {"summary": snapshot.get("agent_summary", "")},
             "tools": [_tool_summary(result) for result in tool_results],
             "verification": verification_data,
-            "artifacts": [_redact(artifact) for artifact in artifacts],
+            "artifacts": [redact(artifact) for artifact in artifacts],
             "feature_status": {
                 "execution": "implemented",
                 "python_math": "experimental",
-                "multimodal": "implemented" if snapshot.get("asset_refs") else "planned",
+                "multimodal": _multimodal_status(snapshot),
                 "verification": "implemented",
             },
         }
-        return _redact(pack)
+        return redact(pack)
 
     def to_json(self, pack: Mapping[str, Any]) -> str:
         """Serialize an Evidence Pack with stable UTF-8 JSON."""
@@ -113,16 +97,13 @@ def _tool_summary(result: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _redact(value: Any, *, key: str | None = None) -> Any:
-    if key is not None and key.lower() in _SENSITIVE_KEYS:
-        return "[redacted]"
-    if isinstance(value, Mapping):
-        return {str(name): _redact(item, key=str(name)) for name, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_redact(item) for item in value]
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    return str(value)
+def _multimodal_status(snapshot: Mapping[str, Any]) -> str:
+    vision_status = snapshot.get("vision_status")
+    if vision_status == "implemented":
+        return "implemented"
+    if vision_status == "unavailable":
+        return "unavailable"
+    return "planned"
 
 
 __all__ = ["EvidencePackExporter"]

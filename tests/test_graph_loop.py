@@ -57,6 +57,7 @@ class LangGraphLoopTest(unittest.TestCase):
         loop = LangGraphExecutionLoop(
             ScriptedAgent([AgentDecision.tool("python", {})]),
             tools,
+            budget=LoopBudget(max_retries=0),
         )
         first = loop.run({"run_id": "run_retry", "problem": "计算"})
         self.assertEqual("NEEDS_REVIEW", first["status"])
@@ -71,6 +72,23 @@ class LangGraphLoopTest(unittest.TestCase):
         self.assertEqual("recovered", resumed["final_response"])
         self.assertIn("tool_completed", [event["type"] for event in resumed["events"]])
         self.assertIn("run_resumed", [event["type"] for event in resumed["events"]])
+
+    def test_tool_retry_budget_retries_same_request_then_continues(self):
+        tools = ScriptedTools(
+            [
+                ToolExecutionResult(status="timeout", error_category="tool_timeout"),
+                ToolExecutionResult.success(result_summary="2"),
+            ]
+        )
+        loop = LangGraphExecutionLoop(
+            ScriptedAgent([AgentDecision.tool("python", {}), AgentDecision.final("2")]),
+            tools,
+            budget=LoopBudget(max_retries=1),
+        )
+        result = loop.run({"run_id": "run_retry_budget", "problem": "计算"})
+        self.assertEqual("COMPLETED", result["status"])
+        self.assertEqual(1, result["retry_count"])
+        self.assertIn("tool_retry", [event["type"] for event in result["events"]])
 
     def test_step_budget_has_terminal_explanation(self):
         loop = LangGraphExecutionLoop(

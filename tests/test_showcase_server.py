@@ -8,7 +8,7 @@ import unittest
 from http.client import HTTPConnection
 
 from showcase.run_service import RunService
-from showcase.server import ShowcaseHandler, ShowcaseServer
+from showcase.server import ShowcaseHandler, ShowcaseServer, create_live_service
 
 
 class FailingAgent:
@@ -66,6 +66,12 @@ class ShowcaseServerTest(unittest.TestCase):
         status, _, body = self.request("POST", "/api/runs", {"problem": " "})
         self.assertEqual(400, status)
         self.assertEqual("problem_must_be_non_empty", body["error"])
+
+    def test_live_mode_is_explicit_and_health_stays_credential_free(self):
+        service = create_live_service()
+        self.assertEqual("live", service.execution_mode)
+        self.assertEqual("ok", service.health()["status"])
+        service.close()
 
 
 class ShowcaseResumeTest(unittest.TestCase):

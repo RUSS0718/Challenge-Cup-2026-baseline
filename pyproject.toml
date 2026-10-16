@@ -8,12 +8,20 @@ dependencies = [
   "sympy==1.13.3",
 ]
 
+[project.optional-dependencies]
+showcase = [
+  "langgraph==1.2.15",
+  "deepagents==0.7.25",
+]
+
 [dependency-groups]
 dev = [
   "pre-commit>=3.7,<5",
   "pytest>=8,<9",
   "requests>=2.31,<3",
   "ruff>=0.11,<1",
+  "langgraph==1.2.15",
+  "deepagents==0.7.25",
 ]
 
 [tool.uv]

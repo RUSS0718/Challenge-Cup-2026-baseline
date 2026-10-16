@@ -12,6 +12,7 @@ import os
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from functools import wraps
 from typing import Any
 
 from .graph import AgentDecision
@@ -178,6 +179,7 @@ class InternChatModel:
             model_config = ConfigDict(arbitrary_types_allowed=True)
             client: Any
             model_id: str = "intern-s2"
+            bound_tools: tuple[Any, ...] = ()
 
             @property
             def _llm_type(self) -> str:
@@ -190,13 +192,23 @@ class InternChatModel:
                     for message in messages
                 ]
                 text = self.client.chat(payload, temperature=0.2, max_tokens=4096)
-                return ChatResult(generations=[ChatGeneration(message=AIMessage(content=str(text)))])
+                text = str(text)
+                requests = _parse_tool_requests(text)
+                if requests:
+                    message = AIMessage(
+                        content="",
+                        tool_calls=[
+                            {"name": request.name, "args": dict(request.arguments), "id": f"call_{index}"}
+                            for index, request in enumerate(requests, 1)
+                        ],
+                    )
+                else:
+                    message = AIMessage(content=text)
+                return ChatResult(generations=[ChatGeneration(message=message)])
 
             def bind_tools(self, tools: Sequence[Any], *, tool_choice: str | None = None,
                            **kwargs: Any) -> Any:
-                # Tool calls are normalized by InternAgentAdapter.  Returning
-                # the model keeps DeepAgents internals out of the product contract.
-                return self
+                return self.model_copy(update={"bound_tools": tuple(tools)})
 
         return _InternChatModel(client=args[0], model_id=kwargs.get("model_id", "intern-s2"))
 
@@ -218,7 +230,7 @@ class DeepAgentsAdapter:
             raise AdapterError("showcase_dependency_missing", "deepagents") from exc
         self._agent = create_deep_agent(
             model=InternChatModel(client, model_id=model_id),
-            tools=list(tools),
+            tools=[_prepare_deep_tool(tool) for tool in tools],
             system_prompt=system_prompt,
         )
 
@@ -241,6 +253,20 @@ def _normalize_message(message: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(role, str) or not isinstance(content, (str, list, tuple)):
         raise AdapterError("message_invalid")
     return {"role": role, "content": content}
+
+
+def _prepare_deep_tool(tool: Callable[..., Any]) -> Callable[..., Any]:
+    """Give anonymous injected callables the description DeepAgents requires."""
+
+    if getattr(tool, "__doc__", None):
+        return tool
+
+    @wraps(tool)
+    def described_tool(*args: Any, **kwargs: Any) -> Any:
+        return tool(*args, **kwargs)
+
+    described_tool.__doc__ = f"Registered showcase tool: {getattr(tool, '__name__', 'tool')}"
+    return described_tool
 
 
 def _extract_response(raw: Any) -> tuple[str, dict[str, Any]]:

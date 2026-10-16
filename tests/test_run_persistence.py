@@ -83,6 +83,12 @@ class ShowcaseRunPersistenceTest(unittest.TestCase):
             self.assertNotIn("secret prompt", serialized)
             self.assertNotIn("secret token", serialized)
             self.assertIn("result_summary", serialized)
+            leaked = service.append_event(
+                snapshot["run_id"],
+                {"type": "summary", "summary": "apiKey=SECRET full_prompt=PRIVATE"},
+            )
+            self.assertNotIn("SECRET", repr(leaked))
+            self.assertNotIn("PRIVATE", repr(leaked))
             service.close()
 
 

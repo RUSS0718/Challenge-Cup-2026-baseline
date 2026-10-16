@@ -10,6 +10,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REPLAY = ROOT / "docs" / "replay" / "showcase-replay-v0.1.json"
+sys.path.insert(0, str(ROOT))
+
+from showcase.redaction import sensitive_markers  # noqa: E402
 
 
 def main() -> int:
@@ -36,21 +39,10 @@ def main() -> int:
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         print(f"showcase_release=FAIL replay={type(exc).__name__}")
         return 1
-    serialized = json.dumps(payload, ensure_ascii=False)
-    for marker in (
-        "api_key",
-        "authorization",
-        "prompt",
-        "hidden_answer",
-        "image_bytes",
-        "image_base64",
-        "full_image",
-        "full_image_bytes",
-        "full_image_base64",
-    ):
-        if marker in serialized.lower():
-            print(f"showcase_release=FAIL sensitive_marker={marker}")
-            return 1
+    markers = sensitive_markers(payload)
+    if markers:
+        print(f"showcase_release=FAIL sensitive_marker={markers[0]}")
+        return 1
     if payload.get("run_mode") != "replay":
         print("showcase_release=FAIL replay_mode_missing")
         return 1

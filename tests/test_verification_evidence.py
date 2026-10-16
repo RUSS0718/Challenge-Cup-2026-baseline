@@ -44,13 +44,20 @@ class VerificationEvidenceTest(unittest.TestCase):
                 }
             ],
             verification={"status": "pass", "findings": []},
-            artifacts=[{"asset_id": "asset_1", "image_bytes": "FULL_IMAGE"}],
+            artifacts=[
+                {
+                    "asset_id": "asset_1",
+                    "image_bytes": "FULL_IMAGE",
+                    "full_image_bytes": "FULL_IMAGE_VARIANT",
+                }
+            ],
         )
         json.dumps(pack, ensure_ascii=False)
         serialized = exporter.to_json(pack)
         self.assertNotIn("private", serialized)
         self.assertNotIn("hidden", serialized)
         self.assertNotIn("FULL_IMAGE", serialized)
+        self.assertNotIn("FULL_IMAGE_VARIANT", serialized)
         self.assertEqual("pass", pack["verification"]["status"])
         self.assertEqual("event_1", pack["timeline"][0]["evidence_id"])
 

@@ -142,6 +142,7 @@ class ToolRegistry:
             executor.shutdown(wait=False, cancel_futures=True)
             return ToolExecutionResult(
                 status="error",
+                parameter_summary=_summary(arguments),
                 result_summary=type(exc).__name__,
                 error_category="tool_execution_error",
                 duration_seconds=_duration(started),
@@ -150,6 +151,7 @@ class ToolRegistry:
             executor.shutdown(wait=True)
         return ToolExecutionResult(
             status="success",
+            parameter_summary=_summary(arguments),
             value=value,
             result_summary=_summary(value),
             duration_seconds=_duration(started),
@@ -195,6 +197,7 @@ class PythonMathTool:
         except OSError as exc:
             return ToolExecutionResult(
                 status="error",
+                parameter_summary=_summary(arguments),
                 result_summary=type(exc).__name__,
                 error_category="python_process_error",
                 duration_seconds=_duration(started),
@@ -209,6 +212,7 @@ class PythonMathTool:
         output = completed.stdout.strip()
         return ToolExecutionResult(
             status="success",
+            parameter_summary=_summary(arguments),
             value=output,
             result_summary=_summary(output),
             duration_seconds=_duration(started),

@@ -89,6 +89,7 @@ class ToolExecutionResult:
     """Normalized product result for one registered tool invocation."""
 
     status: ToolStatus
+    parameter_summary: str = ""
     result_summary: str = ""
     value: Any = None
     error_category: str | None = None
@@ -277,6 +278,7 @@ class LangGraphExecutionLoop:
             result = ToolExecutionResult(status="error", error_category=type(exc).__name__)
         result = ToolExecutionResult(
             status=result.status,
+            parameter_summary=result.parameter_summary,
             result_summary=result.result_summary,
             value=result.value,
             error_category=result.error_category,
@@ -286,6 +288,7 @@ class LangGraphExecutionLoop:
         tool_record = {
             "name": name,
             "status": result.status,
+            "parameter_summary": result.parameter_summary,
             "result_summary": result.result_summary,
             "error_category": result.error_category,
             "duration_seconds": result.duration_seconds,
@@ -375,6 +378,7 @@ def _normalize_tool_result(value: ToolExecutionResult | Mapping[str, Any]) -> To
         raise ValueError("tool_status_invalid")
     return ToolExecutionResult(
         status=status,
+        parameter_summary=str(value.get("parameter_summary", "")),
         result_summary=str(value.get("result_summary", "")),
         value=value.get("value"),
         error_category=(str(value["error_category"]) if value.get("error_category") else None),

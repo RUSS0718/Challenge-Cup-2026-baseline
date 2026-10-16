@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from showcase.run_service import AgentResult, RunService
+from showcase.run_service import RunService
 
 
 class FailingAgent:

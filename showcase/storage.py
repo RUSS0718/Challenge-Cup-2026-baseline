@@ -211,7 +211,7 @@ class SQLiteStore:
 
         self._connection.close()
 
-    def __enter__(self) -> "SQLiteStore":
+    def __enter__(self) -> SQLiteStore:
         return self
 
     def __exit__(self, *_args: object) -> None:

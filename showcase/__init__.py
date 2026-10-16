@@ -5,8 +5,14 @@ Importing the official profile therefore never loads this package or its
 future product-only dependencies.
 """
 
+from .graph import (
+    AgentDecision,
+    GraphDependencyError,
+    LangGraphExecutionLoop,
+    LoopBudget,
+    ToolExecutionResult,
+)
 from .profile import OFFICIAL_PROFILE, SHOWCASE_PROFILE, ProfileBoundaryError
-from .storage import PersistenceError, SQLiteStore
 from .run_service import (
     AgentAdapter,
     AgentResult,
@@ -16,11 +22,16 @@ from .run_service import (
     RunService,
     RunValidationError,
 )
+from .storage import PersistenceError, SQLiteStore
 
 __all__ = [
     "AgentAdapter",
+    "AgentDecision",
     "AgentResult",
     "FakeAgentAdapter",
+    "GraphDependencyError",
+    "LangGraphExecutionLoop",
+    "LoopBudget",
     "OFFICIAL_PROFILE",
     "ProfileBoundaryError",
     "PersistenceError",
@@ -30,4 +41,5 @@ __all__ = [
     "RunValidationError",
     "SHOWCASE_PROFILE",
     "SQLiteStore",
+    "ToolExecutionResult",
 ]
